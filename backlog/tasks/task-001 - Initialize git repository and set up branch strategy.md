@@ -1,7 +1,7 @@
 ---
 id: 1
 title: Initialize git repository and set up branch strategy
-status: To Do
+status: Done
 priority: high
 labels: [setup, infrastructure, git]
 epic: Project Foundation & Setup

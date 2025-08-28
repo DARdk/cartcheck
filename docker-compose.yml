@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: cartchef-postgres
+    environment:
+      POSTGRES_DB: cartchef
+      POSTGRES_USER: cartchef
+      POSTGRES_PASSWORD: cartchef_dev
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/cloud-sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartchef -d cartchef"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: cartchef-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend FastAPI service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cartchef-backend
+    environment:
+      - DATABASE_URL=postgresql://cartchef:cartchef_dev@postgres:5432/cartchef
+      - REDIS_URL=redis://redis:6379
+      - FIREBASE_PROJECT_ID=cartchef-dev
+      - MCP_SERVER_URL=http://mcp-server:3001
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./backend/node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+
+  # MCP Server for Nemlig API
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    container_name: cartchef-mcp-server
+    environment:
+      - NODE_ENV=development
+      - NEMLIG_API_BASE_URL=https://api.nemlig.com
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./mcp-server:/app
+      - /app/node_modules
+
+
+  # Frontend Next.js application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cartchef-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=cartchef-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+
+  # Firebase Emulator Suite
+  firebase-emulator:
+    image: google/cloud-sdk:alpine
+    container_name: cartchef-firebase-emulator
+    command: |
+      sh -c "
+        gcloud components install firebase-cli --quiet &&
+        firebase emulators:start --only firestore,auth --project cartchef-dev
+      "
+    ports:
+      - "9099:9099"  # Auth emulator
+      - "8080:8080"  # Firestore emulator
+      - "4000:4000"  # Firebase emulator UI
+    volumes:
+      - ./infra/firebase-auth:/workspace
+    working_dir: /workspace
+    environment:
+      - FIREBASE_PROJECT_ID=cartchef-dev
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: cartchef-network

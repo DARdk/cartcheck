@@ -1,2 +1,49 @@
 .DS_Store
 CLAUDE.md
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Build outputs
+.next/
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Docker
+.docker/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Database
+*.db
+*.sqlite
+
+# OS
+Thumbs.db
+.DS_Store
