@@ -1,7 +1,7 @@
 ---
 id: 2
 title: Configure development environment and Docker setup
-status: To Do
+status: Done
 priority: high
 labels: [setup, docker, devenv]
 epic: Project Foundation & Setup
